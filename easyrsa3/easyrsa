@@ -33,6 +33,7 @@ Here is the list of commands available with a short syntax reminder. Use the
   sign-req <type> <filename_base>
   build-client-full <filename_base> [ cmd-opts ]
   build-server-full <filename_base> [ cmd-opts ]
+  archive <filename_base>
   revoke <filename_base>
   gen-crl
   update-db
@@ -96,6 +97,10 @@ cmd_help() {
       This mode uses the <filename_base> as the X509 CN."
 			opts="
         nopass  - do not encrypt the private key (default is encrypted)" ;;
+		archive) text="
+  archive <filename_base>
+      Archive a certificate specified by the filename_base by prepending
+      a timestamp to filename_base." ;;
 		revoke) text="
   revoke <filename_base>
       Revoke a certificate specified by the filename_base" ;;
@@ -808,6 +813,28 @@ Matching file found at: "
 
 } # => build_full()
 
+# archive backend
+archive() {
+	verify_ca_init
+
+	# pull filename base:
+	[ -n "$1" ] || die "\
+Error: didn't find a file base name as the first argument.
+Run easyrsa without commands for usage and command help."
+	local timestamp="$(date "+%Y%m%d%H%M%S")"
+	local crt_in="$EASYRSA_PKI/issued/$1.crt"
+	local key_in="$EASYRSA_PKI/private/$1.key"
+	local req_in="$EASYRSA_PKI/reqs/$1.req"
+	local crt_out="$EASYRSA_PKI/issued/${timestamp}_$1.crt"
+	local key_out="$EASYRSA_PKI/private/${timestamp}_$1.key"
+	local req_out="$EASYRSA_PKI/reqs/${timestamp}_$1.req"
+
+	# Move files
+	[ -f "$key_in" ] && mv -v "$key_in" "$key_out"
+	[ -f "$crt_in" ] && mv -v "$crt_in" "$crt_out"
+	[ -f "$req_in" ] && mv -v "$req_in" "$req_out"
+} # => archive()
+
 # revoke backend
 revoke() {
 	verify_ca_init
@@ -1338,6 +1365,9 @@ case "$cmd" in
 		;;
 	gen-crl)
 		gen_crl
+		;;
+	archive)
+		archive "$@"
 		;;
 	revoke)
 		revoke "$@"
